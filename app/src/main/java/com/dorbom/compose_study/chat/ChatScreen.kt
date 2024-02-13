@@ -163,12 +163,12 @@ private fun ChatScreen(viewModel: ChatViewModel) {
         viewModel.chatList
     }
 
+    val lazyListState = rememberLazyListState()
+
     Column(
         modifier = Modifier
             .fillMaxSize(1f)
     ) {
-
-        val lazyListState = rememberLazyListState()
 
         LaunchedEffect(messages.size) {
             lazyListState.scrollToItem(messages.lastIndex)
@@ -255,7 +255,9 @@ fun InputBox(messages: MutableList<Message>, modifier: Modifier = Modifier) {
             )
             Button(
                 onClick = onClickButton,
-                modifier = Modifier.padding(start = 6.dp, end = 6.dp, top = 4.dp),
+                modifier = Modifier
+                    .padding(start = 6.dp, end = 6.dp, top = 4.dp)
+                    .background(Color.Black),
                 enabled = true
             ) {
                 Text(text = "전송")

@@ -6,9 +6,12 @@ import com.dorbom.compose_study.model.Message
 
 class ChatViewModel : ViewModel() {
 
-    val chatList = mutableStateListOf<Message>().apply {
-        addAll(getMessages())
+    val chatList by lazy {
+        mutableStateListOf<Message>().apply {
+            addAll(getMessages())
+        }
     }
+
 
     private fun getMessages(): List<Message> {
         return mutableListOf(
