@@ -47,9 +47,10 @@ fun MainScreen() {
 
             NavHost(
                 modifier = Modifier
-                    .weight(1f),
+                    .weight(1f)
+                    .fillMaxWidth(),
                 navController = navController,
-                startDestination = "profile") {
+                startDestination = "home") {
 
                 composable(route = "home") {
                     HomeScreen()
