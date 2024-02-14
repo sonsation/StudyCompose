@@ -59,6 +59,7 @@ private fun ProfileScreen(viewModel: ProfileScreenViewModel) {
         modifier = Modifier
             .background(Color.White)
     ) {
+
         ProfileHeader()
 
         Spacer(modifier = Modifier.height(20.dp))

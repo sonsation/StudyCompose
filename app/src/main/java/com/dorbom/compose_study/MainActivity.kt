@@ -66,7 +66,11 @@ fun MainScreen() {
                 Button(
                     onClick = {
                         navController.navigate("home") {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     modifier = Modifier
@@ -78,7 +82,11 @@ fun MainScreen() {
                 Button(
                     onClick = {
                         navController.navigate("chat") {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     modifier = Modifier
@@ -90,7 +98,11 @@ fun MainScreen() {
                 Button(
                     onClick = {
                         navController.navigate("profile") {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
                             launchSingleTop = true
+                            restoreState = true
                         }
                     },
                     modifier = Modifier
