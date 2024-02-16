@@ -5,8 +5,11 @@ import android.util.Log
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.FlingBehavior
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.ScrollScope
 import androidx.compose.foundation.gestures.scrollable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -40,6 +43,7 @@ import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -47,6 +51,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -55,6 +60,7 @@ import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
@@ -73,9 +79,11 @@ import androidx.navigation.NavController
 import androidx.viewpager.widget.ViewPager
 import com.bumptech.glide.integration.compose.ExperimentalGlideComposeApi
 import com.bumptech.glide.integration.compose.GlideImage
+import com.dorbom.compose_study.model.Picture
 import com.dorbom.compose_study.util.Display.toDp
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlin.math.abs
 
 @Composable
 fun ProfileScreen(navController: NavController, viewModel: ProfileScreenViewModel) {
@@ -88,26 +96,31 @@ private fun ProfileScreen(viewModel: ProfileScreenViewModel) {
     var contentHeight by rememberSaveable {
         mutableIntStateOf(0)
     }
-    val scrollState = rememberScrollState()
-    var toolbarOffsetHeightPx by remember {
+    var headerHeight by rememberSaveable {
         mutableIntStateOf(0)
     }
-    var toolbarHeightPx by remember {
-        mutableIntStateOf(0)
+    val scrollState = rememberScrollState()
+    var visibleRatio by remember {
+        mutableFloatStateOf(0f)
     }
     val nestedScrollConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                // Updates the toolbar offset based on the scroll to enable
-                // collapsible behaviour
 
                 val delta = available.y
-                val newOffset = toolbarOffsetHeightPx + delta
-                toolbarOffsetHeightPx = newOffset.coerceIn((-toolbarHeightPx).toFloat(), 0f).toInt()
 
-                Log.e("asdfsdf", "asdfasdfsdfa")
-
-                return Offset.Zero
+                return when {
+                    visibleRatio <= 0f -> {
+                        Offset.Zero
+                    }
+                    delta < 0 -> {
+                        scrollState.dispatchRawDelta(delta * -1)
+                        Offset(0f, delta)
+                    }
+                    else -> {
+                        Offset.Zero
+                    }
+                }
             }
         }
     }
@@ -115,7 +128,7 @@ private fun ProfileScreen(viewModel: ProfileScreenViewModel) {
     val modifier = Modifier
         .background(Color.White)
         .fillMaxHeight()
-        .verticalScroll(scrollState)
+        .verticalScroll(state = scrollState)
         .nestedScroll(nestedScrollConnection)
         .onSizeChanged { size ->
 
@@ -132,19 +145,20 @@ private fun ProfileScreen(viewModel: ProfileScreenViewModel) {
 
         ProfileHeader(
             modifier = Modifier
-                .padding(bottom = 20.dp)
                 .onSizeChanged {
-                    toolbarHeightPx = it.height
+                    headerHeight = it.height
                 }
-                .absoluteOffset(y = toolbarOffsetHeightPx.dp)
+                .onGloballyPositioned {
+                    visibleRatio = it.boundsInRoot().height / headerHeight
+                    Log.e("asdfsdf", visibleRatio.toString())
+                }
+                .padding(bottom = 20.dp)
         )
 
         ProfilePictures(
             viewModel = viewModel,
-            offset = toolbarOffsetHeightPx.dp,
             modifier = Modifier
-                .fillMaxHeight()
-                .height(contentHeight.dp)
+                .height(contentHeight.toDp().dp)
                 .background(Color.Transparent)
         )
     }
@@ -258,12 +272,12 @@ private fun ProfileHeader(modifier: Modifier) {
 @OptIn(ExperimentalFoundationApi::class, ExperimentalGlideComposeApi::class)
 @Composable
 private fun ProfilePictures(viewModel: ProfileScreenViewModel,
-                            offset: Dp,
                             modifier: Modifier) {
 
     val pages = listOf(
         "Football",
-        "Baseball"
+        "Baseball",
+        "Mixed"
     )
 
     val pagerState = rememberPagerState(pageCount = {
@@ -271,10 +285,6 @@ private fun ProfilePictures(viewModel: ProfileScreenViewModel,
     })
 
     val coroutineScope = rememberCoroutineScope()
-
-    var tableRowHeight by remember {
-        mutableIntStateOf(0)
-    }
 
     Column(
         modifier = modifier
@@ -288,12 +298,7 @@ private fun ProfilePictures(viewModel: ProfileScreenViewModel,
                     color = Color.Black
                 )
             },
-            containerColor = Color.Transparent,
-            modifier = Modifier
-                .absoluteOffset(y = offset)
-                .onSizeChanged {
-                    tableRowHeight = it.height
-                }
+            containerColor = Color.Transparent
         ) {
             pages.forEachIndexed { index, page ->
                 Tab(
@@ -315,21 +320,29 @@ private fun ProfilePictures(viewModel: ProfileScreenViewModel,
             }
         }
 
+        val targetPictures = remember(pagerState.currentPage) {
+
+            if (pagerState.currentPage == 0) {
+                viewModel.footballPictures
+            } else if (pagerState.currentPage == 1) {
+                viewModel.basketballPictures
+            } else {
+                mutableListOf<Picture>().apply {
+                    addAll(viewModel.footballPictures)
+                    addAll(viewModel.basketballPictures)
+                }.shuffled()
+            }
+        }
+
         HorizontalPager(
             state = pagerState,
-            modifier = Modifier.wrapContentHeight()
+            modifier = Modifier.weight(1f)
         ) { page ->
-
-            val targetPictures = if (page == 0) {
-                viewModel.footballPictures
-            } else {
-                viewModel.baseballPictures
-            }
 
             LazyVerticalGrid(
                 columns = GridCells.Fixed(3),
                 modifier = Modifier
-                    .wrapContentHeight()
+                    .fillMaxHeight()
             ) {
                 items(targetPictures) { picture ->
                     GlideImage(
